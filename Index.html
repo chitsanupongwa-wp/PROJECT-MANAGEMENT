@@ -936,6 +936,25 @@ body,.sky{background:#F6F6F4!important}
 .sky.pv .wrap>.pvtag{position:absolute!important;top:34px!important;right:28px!important;background:rgba(255,255,255,.75)!important;border-radius:4px}
 .sky.pv .panel{background:rgba(255,255,255,.82)!important;backdrop-filter:blur(3px)}
 @media (max-width:700px){.sky.pv .wrap:before{display:none}}
+
+.wke .wkef{display:grid;grid-template-columns:120px 120px minmax(0,1fr) auto;gap:10px;align-items:end}
+.wke label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:#475467;font-weight:600}
+.wke input{font-size:15px}.wke .wkeb{display:flex;gap:8px}
+.wkh{margin-top:10px}.wkh summary{cursor:pointer;font-weight:600;color:#12502B;font-size:13.5px}
+.wkt{width:100%;border-collapse:collapse;margin-top:8px;font-size:13.5px}.wkt th,.wkt td{padding:7px 8px;border-bottom:1px solid #EEF1EF;text-align:left}.wkt th{color:#5B6B60;font-weight:600;font-size:12.5px}
+.wkt tr.click{cursor:pointer}.wkt tr.click:hover{background:#F5FAF6}.wkt .neg{color:#C62828;font-weight:700}.wkt .pos{color:#1E8E3E;font-weight:700}
+.wleg .ln.dash{background:repeating-linear-gradient(90deg,#9AA5A0 0 5px,transparent 5px 9px)}
+@media (max-width:700px){.wke .wkef{grid-template-columns:1fr 1fr}.wke .wide,.wke .wkeb{grid-column:1/-1}}
+
+.wke input{border:1px solid #D0D5DD;border-radius:10px;padding:9px 12px;background:#fff;font:inherit;width:100%;box-sizing:border-box}
+
+.wktw{max-height:440px;overflow:auto;border:1px solid #E6ECE8;border-radius:12px}
+.wkt.edit{margin:0}.wkt.edit thead th{position:sticky;top:0;background:#F3F8F4;z-index:1}
+.wkt.edit td{padding:5px 8px;vertical-align:middle}.wkt.edit .tin{width:100%;box-sizing:border-box;border:1px solid #D0D5DD;border-radius:8px;padding:6px 8px;font:inherit;font-size:14px;background:#fff}
+.wkt.edit .tin.plan,.wkt.edit .tin.actual{max-width:96px;text-align:right}.wkt.edit .tin.note{min-width:160px}
+.wkt.edit tr.sel td{background:#EEF7F0}.wkt.edit tr.now .wkc{font-weight:700}.wkc{white-space:nowrap}.wkc .chip{margin-left:6px;font-size:11px}
+.wkt.edit td.var{font-weight:700;white-space:nowrap}.wkt.edit td.var.neg{color:#C62828}.wkt.edit td.var.pos{color:#1E8E3E}.wkt.edit td.auto{color:#667;white-space:nowrap}
+.wke h3 .btn{margin-left:8px}
 </style></head><body><div id="app"></div><script src="config.js"></script>
 <script>if("serviceWorker" in navigator&&location.protocol==="https:")addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}));</script>
 <script>
@@ -1541,6 +1560,59 @@ function wOverview(p,ws){
     h('div',{class:'dgrid'},sec('check','Completed this week',done,'Nothing completed yet'),sec('cal','Due this week',due,'Nothing due this week')),
     h('div',{class:'dgrid'},sec('warn','Carried over (overdue)',late,'No carried-over tasks 👍'),sec('list','Next week lookahead',nxt,'Nothing due next week')));
 }
+function wkWeeks(p){
+  const now=weekStart(new Date()),ents=(Array.isArray(p.weekly)?p.weekly:[]).map(e=>e.week).sort();
+  let a=p.start?weekStart(D(p.start)):addDays(now,-7*11);if(ents[0]&&D(ents[0])<a)a=D(ents[0]);
+  let b=addDays(now,7*2);if(p.finish){const f=weekStart(D(p.finish));if(f>b)b=f}if(ents.length&&D(ents[ents.length-1])>b)b=D(ents[ents.length-1]);
+  const out=[];for(let d=new Date(a);d<=b&&out.length<260;d=addDays(d,7))out.push(isoD(d));return out;
+}
+function wkEntry(p,ws,WM){
+  const can=isAdmin()&&!readOnly,sel=isoD(ws),weeks=wkWeeks(p),cur=isoD(weekStart(new Date()));
+  const rows=weeks.map(w=>{const e=WM[w]||{};return{week:w,plan:e.plan!=null?String(e.plan):'',actual:e.actual!=null?String(e.actual):'',note:e.note||'',auto:Math.round(pctAt(p,addDays(D(w),7))*10)/10}});
+  const num=v=>v===''||v==null?null:Math.max(0,Math.min(100,Math.round(+v*10)/10));
+  let dirty=false;const sb=h('button',{class:'btn pri',type:'button',disabled:true,onclick:()=>{p.weekly=rows.map(r=>({week:r.week,plan:num(r.plan),actual:num(r.actual),note:r.note.trim()})).filter(r=>r.plan!=null||r.actual!=null||r.note);save();toast2('Progress table saved');render()}},'Save table');
+  const mark=()=>{if(!dirty){dirty=true;sb.disabled=false;sb.textContent='Save table •'}};
+  const varCell=r=>{const a=num(r.actual),b=num(r.plan);return a!=null&&b!=null?{t:((a-b)>=0?'+':'')+(Math.round((a-b)*10)/10)+'%',c:a<b?'neg':'pos'}:{t:'',c:''}};
+  const tb=h('tbody');
+  rows.forEach(r=>{const vc=h('td',{class:'var'});const upd=()=>{const v=varCell(r);vc.textContent=v.t;vc.className='var '+v.c};upd();
+    const cell=(k,type,ph)=>{if(!can)return h('td',null,k==='note'?r[k]:(r[k]!==''?r[k]+'%':'–'));const i=h('input',{type,value:r[k],placeholder:ph,class:'tin '+k,min:0,max:100,step:0.1,'aria-label':k});i.oninput=()=>{r[k]=i.value;upd();mark()};return h('td',null,i)};
+    tb.append(h('tr',{class:(r.week===sel?'sel ':'')+(r.week===cur?'now':'')},h('td',{class:'wkc'},h('button',{type:'button',class:'lnk',onclick:()=>{wkSel[p.id]=r.week;render()}},wkRange(r.week)),r.week===cur?h('span',{class:'chip ok'},'This week'):null),
+      cell('plan','number','–'),cell('actual','number','–'),vc,
+      h('td',{class:'auto'},can?h('button',{type:'button',class:'lnk',title:'Copy to Actual',onclick:e=>{const inp=e.target.closest('tr').querySelector('input.actual');inp.value=r.auto;r.actual=String(r.auto);upd();mark()}},r.auto+'%'):r.auto+'%'),
+      cell('note','text','')))});
+  const tbl=h('div',{class:'wktw'},h('table',{class:'wkt edit'},h('thead',null,h('tr',null,h('th',null,'Week'),h('th',null,'Plan %'),h('th',null,'Actual %'),h('th',null,'Var.'),h('th',{title:'Calculated from completed tasks — click to copy'},'From tasks'),h('th',null,'Note'))),tb));
+  setTimeout(()=>{const r=tbl.querySelector('tr.sel');if(r)tbl.scrollTop=Math.max(0,r.offsetTop-80)},0);
+  return h('div',{class:'card sec wke'},h('h3',null,h('span',{class:'sh'},ic('list'),'Weekly progress table'),h('span',{class:'sp'}),h('button',{class:'btn',type:'button',onclick:()=>wkPdf(p)},'⬇ Export PDF'),can?sb:null),
+    can?h('div',{class:'meta',style:'margin:-4px 0 8px'},'Type Plan / Actual % (cumulative) for each week, then Save table. Click a "From tasks" value to copy it into Actual.'):null,tbl);
+}
+function wkPdf(p){
+  const L=(Array.isArray(p.weekly)?p.weekly:[]).slice().sort((a,b)=>a.week.localeCompare(b.week));
+  const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const W=900,H=300,Lm=46,B=40,T=18,iw=W-Lm-16,ih=H-B-T,n=Math.max(1,L.length);
+  const x=i=>Lm+iw*(i+.5)/n,y=v=>T+ih*(1-v/100);let g='';
+  [0,20,40,60,80,100].forEach(v=>{g+=`<line x1="${Lm}" x2="${W-16}" y1="${y(v)}" y2="${y(v)}" stroke="#E3E8E5"/><text x="${Lm-6}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="#555">${v}%</text>`});
+  const step=Math.ceil(n/14);L.forEach((e,i)=>{if(i%step===0||i===n-1)g+=`<text x="${x(i)}" y="${H-14}" text-anchor="middle" font-size="10.5" fill="#555">${enDs(e.week).slice(0,6)}</text>`});
+  const ln=(k,col,dash,lab)=>{const pts=L.map((e,i)=>e[k]!=null?[x(i),y(e[k]),e[k]]:null).filter(Boolean);if(!pts.length)return;g+=`<polyline fill="none" stroke="${col}" stroke-width="2.4" ${dash?'stroke-dasharray="7 5"':''} points="${pts.map(q=>q[0]+','+q[1]).join(' ')}"/>`;pts.forEach(q=>{g+=`<circle cx="${q[0]}" cy="${q[1]}" r="3.5" fill="#fff" stroke="${col}" stroke-width="2"/>`;if(lab)g+=`<text x="${q[0]}" y="${q[1]-8}" text-anchor="middle" font-size="10" font-weight="700" fill="${col}">${q[2]}</text>`})};
+  ln('plan','#9AA5A0',true,false);ln('actual','#12502B',false,true);
+  const last=[...L].reverse().find(e=>e.actual!=null),lp=last&&last.plan;
+  const rows=L.map(e=>{const v=e.plan!=null&&e.actual!=null?Math.round((e.actual-e.plan)*10)/10:null;return`<tr><td>${esc(wkRange(e.week))}</td><td class=r>${e.plan!=null?e.plan+'%':'–'}</td><td class=r><b>${e.actual!=null?e.actual+'%':'–'}</b></td><td class="r ${v==null?'':v<0?'neg':'pos'}">${v==null?'':(v>=0?'+':'')+v+'%'}</td><td>${esc(e.note)}</td></tr>`}).join('');
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(p.name)} – Weekly Progress</title><style>
+@page{size:A4 landscape;margin:12mm}body{font-family:'Sarabun','Inter',system-ui,sans-serif;color:#111;margin:0}
+h1{font-size:22px;margin:0 0 2px}.sub{color:#444;font-size:13px;margin-bottom:10px}.bar{height:4px;width:120px;background:#1E8E3E;border-radius:2px;margin:6px 0 12px}
+.kp{display:flex;gap:10px;margin:8px 0 12px}.kp div{border:1px solid #DDE5E0;border-radius:10px;padding:8px 14px}.kp b{display:block;font-size:20px;color:#12502B}.kp span{font-size:11.5px;color:#555}
+svg{width:100%;height:auto;border:1px solid #E3E8E5;border-radius:10px}.leg{font-size:11.5px;color:#555;margin:4px 0 12px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{border:1px solid #DDE3DF;padding:5px 8px;text-align:left}th{background:#EEF6F0}.r{text-align:right}.neg{color:#C62828;font-weight:700}.pos{color:#1E8E3E;font-weight:700}tr{page-break-inside:avoid}
+.ft{margin-top:10px;font-size:11px;color:#777}@media screen{body{padding:20px;max-width:1100px;margin:auto}}</style></head><body>
+<h1>${esc(p.name)} — Weekly Progress Report</h1><div class=sub>${esc([p.scope,p.client&&('Client: '+p.client),p.start&&('Start '+enDs(p.start)),p.finish&&('Finish '+enDs(p.finish))].filter(Boolean).join(' · '))}</div><div class=bar></div>
+<div class=kp><div><span>Latest actual</span><b>${last?last.actual+'%':'–'}</b></div><div><span>Plan (same week)</span><b>${lp!=null?lp+'%':'–'}</b></div><div><span>Variance</span><b class="${last&&lp!=null?(last.actual<lp?'neg':'pos'):''}">${last&&lp!=null?((last.actual-lp)>=0?'+':'')+(Math.round((last.actual-lp)*10)/10)+'%':'–'}</b></div><div><span>Weeks recorded</span><b>${L.length}</b></div></div>
+${L.length?`<svg viewBox="0 0 ${W} ${H}">${g}</svg><div class=leg>━ Actual % &nbsp;&nbsp; ╍ Plan %</div>`:''}
+<table><thead><tr><th>Week</th><th class=r>Plan %</th><th class=r>Actual %</th><th class=r>Variance</th><th>Note</th></tr></thead><tbody>${rows||'<tr><td colspan=5>No data</td></tr>'}</tbody></table>
+<div class=ft>Generated ${esc(fmtDT(new Date().toISOString()))} by ${esc(me.name||me.u)} · Project To-Do Dashboard</div>
+<script>setTimeout(function(){window.print()},400)<\/script></body></html>`;
+  const w=window.open('','_blank');
+  if(w){w.document.open();w.document.write(html);w.document.close()}
+  else{const b=new Blob([html],{type:'text/html'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=(p.name||'project')+'-weekly-progress.html';document.body.append(a);a.click();a.remove();toast2('Pop-up blocked – downloaded the report; open it and print to PDF')}
+}
 function wProgress(p,ws){
   const N=8,weeks=[...Array(N)].map((_,i)=>addDays(ws,-7*(N-1-i)));
   const data=weeks.map(w=>({w,pc:pctAt(p,addDays(w,7)),dn:p.tasks.filter(t=>inWk(tDone(t),w)).length}));
@@ -1548,15 +1620,19 @@ function wProgress(p,ws){
   const x=i=>L+iw*(i+.5)/N,y=v=>T+ih*(1-v/100);
   let g='';[0,25,50,75,100].forEach(v=>{g+=`<line x1="${L}" x2="${W-12}" y1="${y(v)}" y2="${y(v)}" stroke="#E6ECE8"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="#6B7A70">${v}%</text>`});
   data.forEach((d,i)=>{const bh=ih*.45*d.dn/mx;g+=`<rect x="${x(i)-14}" y="${T+ih-bh}" width="28" height="${bh}" rx="5" fill="#CDEFD3"/>`+(d.dn?`<text x="${x(i)}" y="${T+ih-bh-4}" text-anchor="middle" font-size="11" fill="#1E8E3E">${d.dn}</text>`:'')+`<text x="${x(i)}" y="${H-10}" text-anchor="middle" font-size="11" fill="${i===N-1?'#12502B':'#6B7A70'}" font-weight="${i===N-1?700:400}">${z2(d.w.getDate())} ${MON[d.w.getMonth()]}</text>`});
-  g+=`<polyline fill="none" stroke="#12502B" stroke-width="2.5" points="${data.map((d,i)=>x(i)+','+y(d.pc)).join(' ')}"/>`;
-  data.forEach((d,i)=>{g+=`<circle cx="${x(i)}" cy="${y(d.pc)}" r="4" fill="#fff" stroke="#12502B" stroke-width="2"><title>${Math.round(d.pc)}%</title></circle>`});
+  const WM={};(Array.isArray(p.weekly)?p.weekly:[]).forEach(e=>{WM[e.week]=e});const manual=Object.keys(WM).length>0;
+  data.forEach(d=>{const e=WM[isoD(d.w)];d.plan=e&&e.plan!=null?e.plan:null;d.act=e&&e.actual!=null?e.actual:null});
+  const line=(key,col,dash,lbl)=>{const pts=data.map((d,i)=>d[key]!=null?[x(i),y(d[key]),d[key]]:null).filter(Boolean);if(!pts.length)return;g+=`<polyline fill="none" stroke="${col}" stroke-width="2.6" ${dash?'stroke-dasharray="7 6"':''} points="${pts.map(q=>q[0]+','+q[1]).join(' ')}"/>`;pts.forEach(q=>{g+=`<circle cx="${q[0]}" cy="${q[1]}" r="4.5" fill="#fff" stroke="${col}" stroke-width="2.2"><title>${lbl} ${q[2]}%</title></circle>`;if(lbl==='Actual')g+=`<text x="${q[0]}" y="${q[1]-10}" text-anchor="middle" font-size="12" font-weight="700" fill="${col}">${q[2]}%</text>`})};
+  if(manual){line('plan','#9AA5A0',true,'Plan');line('act','#12502B',false,'Actual')}
+  else{data.forEach(d=>d.auto=d.pc);line('auto','#12502B',false,'Auto')}
   const chart=h('div',{class:'wchart'});chart.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Weekly progress chart">${g}</svg>`;
   const cur=data[N-1],prev=data[N-2];
   const ppl=[...new Set(p.tasks.map(t=>t.owner||''))].map(n=>{const ts=p.tasks.filter(t=>(t.owner||'')===n);return{n,dn:ts.filter(t=>inWk(tDone(t),ws)).length,o:ts.filter(t=>!t.done).length,late:ts.filter(t=>!t.done&&t.due&&D(t.due)<addDays(ws,7)&&D(t.due)<today()).length,all:ts.length,d:ts.filter(t=>t.done).length}}).sort((a,b)=>b.dn-a.dn||b.o-a.o);
   const doing=p.tasks.filter(t=>!t.done&&(t.status==='doing'||t.progress>0)).sort((a,b)=>(b.progress||0)-(a.progress||0));
   return h('div',null,
-    h('div',{class:'card sec'},h('h3',null,h('span',{class:'sh'},ic('chart'),'Progress – last 8 weeks'),h('span',{class:'sp'}),h('span',{class:'chip ok'},pct(cur.pc)+' · '+((cur.pc-prev.pc)>=0?'+':'')+Math.round(cur.pc-prev.pc)+'%')),
-      chart,h('div',{class:'wleg'},h('span',null,h('i',{class:'ln'}),'% complete (cumulative)'),h('span',null,h('i',{class:'bx'}),'Tasks completed in week'))),
+    wkEntry(p,ws,WM),
+    h('div',{class:'card sec'},h('h3',null,h('span',{class:'sh'},ic('chart'),'Progress – last 8 weeks'),h('span',{class:'sp'}),manual?(()=>{const a=data.filter(d=>d.act!=null),l=a[a.length-1],q=a[a.length-2];return l?h('span',{class:'chip ok'},'Actual '+l.act+'%'+(q?' · '+((l.act-q.act)>=0?'+':'')+(Math.round((l.act-q.act)*10)/10)+'%':'')):null})():h('span',{class:'chip ok'},pct(cur.pc)+' · '+((cur.pc-prev.pc)>=0?'+':'')+Math.round(cur.pc-prev.pc)+'%')),
+      chart,h('div',{class:'wleg'},manual?h('span',null,h('i',{class:'ln'}),'Actual % (entered)'):h('span',null,h('i',{class:'ln'}),'% complete (from tasks)'),manual?h('span',null,h('i',{class:'ln dash'}),'Plan %'):null,h('span',null,h('i',{class:'bx'}),'Tasks completed in week'))),
     h('div',{class:'dgrid'},
       h('div',{class:'card sec'},h('h3',null,h('span',{class:'sh'},ic('users'),'By assignee')),
         ppl.length?ppl.map(r=>h('div',{class:'wrow'},r.n?avatar(r.n):avatar(''),h('div',{class:'wn'},h('b',null,r.n||'Unassigned'),h('div',{class:'bar'},h('i',{style:'width:'+(r.all?r.d/r.all*100:0)+'%'}))),
