@@ -403,3 +403,21 @@ function deleteUser(token, userId) {
     return true;
   });
 }
+
+/* ---------- EMERGENCY: run from the Apps Script editor only ----------
+ * Select RESET_ADMIN_PASSWORD in the toolbar ▸ Run. Check "Execution log"
+ * for your exact username, then sign in with NEW_PASSWORD and change it.  */
+function RESET_ADMIN_PASSWORD() {
+  var NEW_PASSWORD = 'Reset2026!';
+  ensureSheets_();
+  lock_(function () {
+    var users = read_('Users'), admins = users.filter(function (x) { return x.role === 'admin'; });
+    if (!admins.length) { Logger.log('No admin account found – open the web app to run First-time Setup.'); return; }
+    var a = admins[0]; a.salt = uid_() + uid_(); a.hash = hash_(NEW_PASSWORD, a.salt); a.status = 'active';
+    write_('Users', users);
+    CacheService.getScriptCache().remove('fail_' + a.u.toLowerCase());
+    Logger.log('Password reset for username: "' + a.u + '"  (name: ' + a.name + ')');
+    Logger.log('All usernames: ' + users.map(function (x) { return x.u + ' [' + x.role + ']'; }).join(', '));
+    Logger.log('Database: ' + db_().getUrl());
+  });
+}
