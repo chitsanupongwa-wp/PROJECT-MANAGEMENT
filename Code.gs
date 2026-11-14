@@ -35,7 +35,9 @@ function doGet() {
 }
 
 /* ---------- JSON API (for the Vercel front end) ---------- */
-var API_ = { bootstrap: 1, setupAdmin: 1, login: 1, signup: 1, logout: 1, ping: 1, getState: 1, saveProject: 1, deleteProject: 1, saveTeam: 1, removeTeamMember: 1, adminCreateUser: 1, approveRequest: 1, rejectRequest: 1, setUserTitle: 1, setUserAccess: 1, resetPassword: 1, changeMyPassword: 1, deleteUser: 1, updateMyProfile: 1 };
+var API_VERSION = '2026-11-14c';
+function version() { return API_VERSION; }
+var API_ = { version: 1, bootstrap: 1, setupAdmin: 1, login: 1, signup: 1, logout: 1, ping: 1, getState: 1, saveProject: 1, deleteProject: 1, saveTeam: 1, removeTeamMember: 1, adminCreateUser: 1, approveRequest: 1, rejectRequest: 1, setUserTitle: 1, setUserAccess: 1, resetPassword: 1, changeMyPassword: 1, deleteUser: 1, updateMyProfile: 1 };
 function doPost(e) {
   var out;
   try {
@@ -70,6 +72,10 @@ function sheet_(name) {
     s.getRange(1, 1, s.getMaxRows(), Math.max(f.length, 1)).setNumberFormat('@');
     s.getRange(1, 1, 1, f.length).setValues([f]).setFontWeight('bold');
     s.setFrozenRows(1);
+  } else if (s.getLastColumn() < f.length) {
+    if (s.getMaxColumns() < f.length) s.insertColumnsAfter(s.getMaxColumns(), f.length - s.getMaxColumns());
+    s.getRange(1, 1, s.getMaxRows(), f.length).setNumberFormat('@');
+    s.getRange(1, 1, 1, f.length).setValues([f]).setFontWeight('bold');
   }
   return s;
 }
