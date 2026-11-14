@@ -10,7 +10,7 @@ var SESSION_SECONDS = 21600; // 6 hours, renewed on every call
 var T = {
   Users:    ['id','u','name','title','role','status','salt','hash','createdAt','lastLogin','photo'],
   Requests: ['id','u','name','title','salt','hash','at'],
-  Projects: ['id','name','client','scope','start','finish','status','note','order','createdAt','links','weekly'],
+  Projects: ['id','name','client','scope','start','finish','status','note','order','createdAt','links','weekly','photo'],
   Access:   ['projectId','userId'],
   Team:     ['name','role'],
   Tasks:    ['id','projectId','title','owner','due','priority','status','progress','done','doneAt','by','createdAt','note','checklist','comments'],
@@ -266,7 +266,7 @@ function saveProject(token, p, loadedAt) {
     } else if (user.role !== 'admin' && visibleIds_(user).indexOf(p.id) < 0) {
       throw new Error('You do not have access to this project');
     }
-    if (user.role === 'admin') { ['name','client','scope','start','finish','status','note'].forEach(function (k) { cur[k] = p[k] || ''; }); cur.weekly = Array.isArray(p.weekly) ? p.weekly.filter(function (w) { return w && /^\d{4}-\d{2}-\d{2}$/.test(String(w.week || '')); }).slice(-260).map(function (w) { var n = function (v) { v = Number(v); return isFinite(v) ? Math.max(0, Math.min(100, Math.round(v * 10) / 10)) : null; }; return { week: String(w.week), plan: n(w.plan), actual: n(w.actual), note: String(w.note || '').slice(0, 300) }; }) : (cur.weekly || []); cur.links = Array.isArray(p.links) ? p.links.filter(function (l) { return l && /^https?:\/\//i.test(String(l.url || '')); }).slice(0, 20).map(function (l) { return { label: String(l.label || 'Link').slice(0, 60), url: String(l.url).slice(0, 2000) }; }) : (cur.links || []); }
+    if (user.role === 'admin') { ['name','client','scope','start','finish','status','note'].forEach(function (k) { cur[k] = p[k] || ''; }); if (p.photo !== undefined) { var ph = String(p.photo || ''); if (!ph || (/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(ph) && ph.length <= 48000)) cur.photo = ph; } cur.weekly = Array.isArray(p.weekly) ? p.weekly.filter(function (w) { return w && /^\d{4}-\d{2}-\d{2}$/.test(String(w.week || '')); }).slice(-260).map(function (w) { var n = function (v) { v = Number(v); return isFinite(v) ? Math.max(0, Math.min(100, Math.round(v * 10) / 10)) : null; }; return { week: String(w.week), plan: n(w.plan), actual: n(w.actual), note: String(w.note || '').slice(0, 300) }; }) : (cur.weekly || []); cur.links = Array.isArray(p.links) ? p.links.filter(function (l) { return l && /^https?:\/\//i.test(String(l.url || '')); }).slice(0, 20).map(function (l) { return { label: String(l.label || 'Link').slice(0, 60), url: String(l.url).slice(0, 2000) }; }) : (cur.links || []); }
     write_('Projects', projects);
     Object.keys(KIDS).forEach(function (k) {
       var all = read_(KIDS[k]);
